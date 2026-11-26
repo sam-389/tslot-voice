@@ -78,9 +78,12 @@
     statusEl.className = isError ? 'err' : '';
   }
 
-  if (!window.opener || !originOk || !nonce) {
-    doneBtn.disabled = true;
-    setStatus('Άνοιξε αυτή τη σελίδα από το κουμπί 🎙 της εφαρμογής TSLOT.', true);
+  // Χωρίς εφαρμογή TSLOT από πίσω (άνοιγμα από σύνδεσμο/εικονίδιο): το «Έτοιμο» αντιγράφει το κείμενο.
+  var standalone = !window.opener || !originOk || !nonce;
+  if (standalone) {
+    doneBtn.textContent = '📋 Αντιγραφή';
+    document.getElementById('cancel').style.display = 'none';
+    document.getElementById('what').textContent = 'Πάτα το μπλε κουμπί, μίλα, και μετά «Αντιγραφή». Στο TSLOT κράτα το δάχτυλο στο πεδίο → Επικόλληση.';
   }
 
   var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
@@ -102,7 +105,8 @@
     rec = new Recognition();
     rec.lang = 'el-GR';
     rec.continuous = !ios;
-    rec.interimResults = true;
+    rec.interimResults = !ios;
+    rec.onaudiostart = function () { setStatus('Ακούω… μίλα κανονικά.'); };
 
     rec.onstart = function () {
       listening = true;
@@ -114,7 +118,7 @@
       listening = false;
       micBtn.classList.remove('on');
       micBtn.textContent = '🎙 Πάτα και μίλα';
-      if (!statusEl.classList.contains('err')) setStatus(textEl.value.trim() ? 'Έλεγξε το κείμενο και πάτα «Έτοιμο».' : '');
+      if (!statusEl.classList.contains('err')) setStatus(textEl.value.trim() ? (standalone ? 'Έλεγξε το κείμενο και πάτα «Αντιγραφή».' : 'Έλεγξε το κείμενο και πάτα «Έτοιμο».') : '');
     };
     rec.onerror = function (e) {
       var msg = {
@@ -160,6 +164,16 @@
     if (rec && listening) rec.stop();
     var text = textEl.value.trim();
     if (!text) { setStatus('Δεν υπάρχει κείμενο.', true); return; }
+    if (standalone) {
+      var copied = function () { setStatus('✓ Αντιγράφηκε. Άνοιξε το TSLOT, κράτα το δάχτυλο στο πεδίο και πάτα «Επικόλληση».'); };
+      var manual = function () { textEl.focus(); textEl.select(); setStatus('Κράτα το δάχτυλο στο κείμενο → «Αντιγραφή».', true); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(copied, manual);
+      } else {
+        manual();
+      }
+      return;
+    }
     try {
       window.opener.postMessage({ type: 'tslot-voice', nonce: nonce, text: text }, returnOrigin);
       window.close();
@@ -170,7 +184,7 @@
 
   // Ξεκινάμε αμέσως να ακούμε (στο iPhone χρειάζεται πάτημα του κουμπιού).
   if (rec && !ios && window.opener && originOk) micBtn.click();
-  if (rec && ios && window.opener && originOk) setStatus('Πάτα το μπλε κουμπί και μίλα.');
+  if (rec && (ios || standalone)) setStatus('Πάτα το μπλε κουμπί και μίλα.');
 })();
 </script>
 </body>
