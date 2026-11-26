@@ -83,18 +83,25 @@
     setStatus('Άνοιξε αυτή τη σελίδα από το κουμπί 🎙 της εφαρμογής TSLOT.', true);
   }
 
+  var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   var rec = null;
   var listening = false;
   var baseText = '';
 
   if (!Recognition) {
-    micBtn.disabled = true;
-    setStatus('Αυτός ο browser δεν υποστηρίζει υπαγόρευση. Άνοιξέ το σε Chrome ή Edge.', true);
+    micBtn.style.display = 'none';
+    if (ios) {
+      setStatus('Πάτα μέσα στο κουτί και μετά το 🎙 του πληκτρολογίου για να μιλήσεις. Μετά πάτα «Έτοιμο».');
+      textEl.focus();
+    } else {
+      setStatus('Αυτός ο browser δεν υποστηρίζει υπαγόρευση. Άνοιξέ το σε Chrome ή Edge.', true);
+    }
   } else {
     rec = new Recognition();
     rec.lang = 'el-GR';
-    rec.continuous = true;
+    rec.continuous = !ios;
     rec.interimResults = true;
 
     rec.onstart = function () {
@@ -112,7 +119,9 @@
     rec.onerror = function (e) {
       var msg = {
         'not-allowed': 'Δεν δόθηκε άδεια για το μικρόφωνο. Πάτα το εικονίδιο 🔒 δίπλα στη διεύθυνση και επίτρεψε το μικρόφωνο.',
-        'service-not-allowed': 'Δεν δόθηκε άδεια για το μικρόφωνο.',
+        'service-not-allowed': ios
+          ? 'Στο iPhone χρειάζεται να είναι ανοιχτά: Ρυθμίσεις → Γενικά → Πληκτρολόγιο → «Ενεργοποίηση υπαγόρευσης», και η Siri. Αλλιώς πάτα στο κουτί και χρησιμοποίησε το 🎙 του πληκτρολογίου.'
+          : 'Δεν δόθηκε άδεια για το μικρόφωνο.',
         'no-speech': 'Δεν ακούστηκε τίποτα. Πάτα ξανά και μίλα.',
         'audio-capture': 'Δεν βρέθηκε μικρόφωνο.',
         'network': 'Δεν υπάρχει σύνδεση στο internet για την αναγνώριση φωνής.'
@@ -159,8 +168,9 @@
     }
   };
 
-  // Ξεκινάμε αμέσως να ακούμε.
-  if (rec && window.opener && originOk) micBtn.click();
+  // Ξεκινάμε αμέσως να ακούμε (στο iPhone χρειάζεται πάτημα του κουμπιού).
+  if (rec && !ios && window.opener && originOk) micBtn.click();
+  if (rec && ios && window.opener && originOk) setStatus('Πάτα το μπλε κουμπί και μίλα.');
 })();
 </script>
 </body>
